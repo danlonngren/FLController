@@ -1,0 +1,38 @@
+name: Run Google Tests
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    # Step 2: Install dependencies
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y build-essential cmake
+
+    # Step 3: Configure and build the project
+    - name: Configure and build
+      run: |
+        mkdir -p build
+        cd build
+        cmake ..
+        make
+
+    # Step 4: Run the tests
+    - name: Run tests
+      run: |
+        cd build
+        ctest --output-on-failure
