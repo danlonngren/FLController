@@ -75,7 +75,7 @@ public:
 class GaussianMF : public MembershipFunction {
 public:
     float evaluate(float x) const override {
-        return clamp(expf(-(x * x) / 2.0f), 0.0f, 1.0f); // sigma = 1.0 assumed
+        return clamp(expf(-(x * x) / 2.0f), -1.0f, 1.0f); // sigma = 1.0 assumed
     }
     float evaluateAndNormalise(float x, float max) const override {
         if (max <= 0.0f) return 0.0f;
@@ -88,7 +88,7 @@ class LinearPMF : public MembershipFunction {
 public:
     float evaluate(float x) const override {
 		std::cout << "Evaluating LinearPMF with x: " << x << std::endl;
-        return clamp((x + 1.0f) / 2.0f, 0.0f, 1.0f); // x ∈ [-1, 1]
+        return clamp((x + 1.0f) / 2.0f, -1.0f, 1.0f); // x ∈ [-1, 1]
     }
 
     float evaluateAndNormalise(float x, float max) const override {
@@ -101,7 +101,7 @@ class LinearNMF : public MembershipFunction {
 public:
     float evaluate(float x) const override {
 		std::cout << "Evaluating LinearNMF with x: " << x << std::endl;
-        return clamp((1.0f - x) / 2.0f, 0.0f, 1.0f); // x ∈ [-1, 1]
+        return clamp((1.0f - x) / 2.0f, -1.0f, 1.0f); // x ∈ [-1, 1]
     }
 
     float evaluateAndNormalise(float x, float max) const override {
