@@ -2,189 +2,96 @@
 
 #include <math.h>
 #include <memory>
+#include <array>
+#include <algorithm>
+#include <utility>
 
-template<typename T>
-T clamp(T val, T minVal, T maxVal) {
-    if (val < minVal) return minVal;
-    else if (val > maxVal) return maxVal;
-    else return val;
-}
+FLController::FLController(float eLim, 
+                            float dLim, 
+                            float iLim, 
+                            float outputGain, 
+                            float outputMax,
+                            std::array<float, 4> weights) :
+        m_fuzzyData(), 
+        m_fcRules(), 
+        m_w(weights) {
+    m_fuzzyData.reset();
+    m_fuzzyData.setLimits(eLim, iLim, dLim);
+    m_fuzzyData.setOutputGain(outputGain);
+    m_fuzzyData.setMaxOutput(outputMax);
 
-// --- Membership functions interface ---
-class MembershipFunction {
-public:
-    // Evaluate the membership function at a given normalized point x
-    virtual float evaluate(float x) const = 0;
-    virtual float evaluateAndNormalise(float x, float max) const = 0;
-    virtual ~MembershipFunction() = default;
-};
+    // m_w[0] = 1.0;
+    // m_w[1] = 0.35;
+    // m_w[2] = 1.0;
+    // m_w[3] = 0.7;
 
-class GaussianMF : public MembershipFunction {
-public:
-    float evaluate(float x) const override {
-        return clamp(expf(-(x * x) / 2.0f), 0.0f, 1.0f); // sigma = 1.0 assumed
-    }
-    float evaluateAndNormalise(float x, float max) const override {
-        if (max <= 0.0f) return 0.0f;
-        return clamp(expf(-(x * x) / (2.0f * max * max)), 0.0f, 1.0f);
-    }
-};
+    auto negLMF = std::make_shared<LinearNMF>();
+    auto posLMF = std::make_shared<LinearPMF>();    
+    auto gauMF  = std::make_shared<GaussianMF>();
+    
+    auto pDada  = std::make_shared<FuzzyDataP>();
+    auto IData  = std::make_shared<FuzzyDataI>();
+    auto dData  = std::make_shared<FuzzyDataD>();
+    
+    m_fcRules = {
+        FLCRuleSet(posLMF, pDada, posLMF, dData, m_w[0],  1.0f), // P+ rule
+        FLCRuleSet(negLMF, pDada, negLMF, dData, m_w[0], -1.0f), // P- rule
 
-class LinearPositiveMF : public MembershipFunction {
-public:
-    float evaluate(float x) const override {
-        return clamp((x + 1.0f) / 2.0f, 0.0f, 1.0f);
-    }
-    float evaluateAndNormalise(float x, float max) const override {
-        return clamp((x + 1.0f) / (2.0f * max), 0.0f, 1.0f);
-    }
-};
+        FLCRuleSet(posLMF, dData, negLMF, pDada, m_w[1],  1.0f), // D+ rule
+        FLCRuleSet(negLMF, dData, posLMF, pDada, m_w[1], -1.0f), // D- rule
 
-class LinearNegativeMF : public MembershipFunction {
-public:
-    float evaluate(float x) const override {
-        return clamp((1.0f - x) / 2.0f, 0.0f, 1.0f);
-    }
-    float evaluateAndNormalise(float x, float max) const override {
-        return clamp((1.0f - x) / (2.0f * max), 0.0f, 1.0f);
-    }
-};
+        FLCRuleSet(posLMF, pDada, posLMF, IData, m_w[2],  1.0f), // I+ rule
+        FLCRuleSet(negLMF, pDada, negLMF, IData, m_w[2], -1.0f), // I- rule
 
-class FuzzyData {
-public:
-    float m_error;
-    float m_dError;
-    float m_iError;
-    float m_eLast;
-    float normalizedError;
-    float normalizedDError;
-    float normalizedIError;
-
-    FuzzyData(float e) :
-        m_error(e), 
-        m_dError(0.0f), 
-        m_iError(0.0f),
-        m_eLast(0.0f)
-    {}
-
-    void update(float e, float eLim, float deLim, float ieLim) {
-        m_error = e;
-        m_dError = m_error - m_eLast; // Derivative error
-        m_eLast = m_error;
-            // Integral error with anti-windup
-        m_iError = clamp(m_iError + m_error, -ieLim, ieLim);
-
-        normalizedError = normalize(m_error, eLim);
-        normalizedDError = normalize(m_dError, deLim);
-        normalizedIError = normalize(m_iError, ieLim);
-    }
-
-    float normalize(float x, float limit) const {
-        return clamp(x / std::abs(limit), -1.0f, 1.0f);
-    }
-};
-
-FLController::FLController(float e_limit, float de_limit, float re_limit, float output_gain, float m_outputMax) :
-    m_errorLimit(e_limit), 
-    m_dErrorLimit(de_limit), 
-    m_integralLimit(re_limit), 
-    output_gain(output_gain), 
-    m_outputMax(m_outputMax) {
-        
-    m_integralError = 0.0f;
-    m_fuzzyOutput   = 0.0f;
-    m_eLast = 0.0f;
+        FLCRuleSet(posLMF, dData, gauMF,  pDada, m_w[3],  1.0f), // Gaussian rule for reducing overshoot
+        FLCRuleSet(negLMF, dData, gauMF,  pDada, m_w[3], -1.0f)  // Gaussian rule for reducing overshoot
+    };
 }
 
 void FLController::reset() {
-	m_integralError = 0;
-	m_fuzzyOutput   = 0;
+	m_fuzzyData.reset();
 }
 
-void FLController::setLimits(float e_limit, float de_limit, float re_limit, float output_gain, float m_outputMax) {
-	m_errorLimit = e_limit;
-	m_dErrorLimit = de_limit;
-	m_integralLimit = re_limit;
-	this->output_gain = output_gain;
-	this->m_outputMax = m_outputMax;
-}
-
-void FLController::setOutputMax(float m_outputMax) {
-	this->m_outputMax = m_outputMax;
-}
-
-float FLController::evaluate(float input, float setpoint, bool level) {   
+float FLController::evaluate(float input, float setpoint, float dt) {   
     // --- Compute error terms ---
-	float error  = (setpoint - input);  // Error
-	float dError = (error - m_eLast);        // Derivative error
-    m_eLast = error;
+	m_fuzzyData.set(setpoint - input, dt);
 
-    // Integral error with anti-windup
-    m_integralError = clamp(m_integralError + error, -m_integralLimit, m_integralLimit);
-
-        // --- Ser mode specific rule weights ---
-    if (level) 	{
-		m_w[0] = 1.0;
-		m_w[1] = 0.35;
-		m_w[2] = 1.0;
-		m_w[3] = 0.7;
-	} else {
-		m_w[0] = 1.3;
-		m_w[1] = 0.15;
-		m_w[2] = 1.0;
-		m_w[3] = 0;
-	}
-
-    // --- Fuzzification and rule evaluation ---
-    float ne  = normalize(error, m_errorLimit);
-    float nde = normalize(dError, m_dErrorLimit);
-    float nre = normalize(m_integralError, m_integralLimit);
-
-    auto negLMF = std::make_shared<LinearNegativeMF>();
-    auto posLMF = std::make_shared<LinearPositiveMF>();    
-    auto gauMF  = std::make_shared<GaussianMF>();
-
-    m_rules = {
-        // P- and P+ rules
-        { [=]() { return negLMF->evaluate(ne) * negLMF->evaluate(nde); }, m_w[0], -1.0f },
-        { [=]() { return posLMF->evaluate(ne) * posLMF->evaluate(nde); }, m_w[0],  1.0f },
-        // D+ and D- rules
-        { [=]() { return negLMF->evaluate(ne) * posLMF->evaluate(nde); }, m_w[1],  1.0f },
-        { [=]() { return posLMF->evaluate(ne) * negLMF->evaluate(nde); }, m_w[1], -1.0f },
-        // I- and I+ rules
-        { [=]() { return negLMF->evaluate(ne) * negLMF->evaluate(nre); }, m_w[2], -1.0f },
-        { [=]() { return posLMF->evaluate(ne) * posLMF->evaluate(nre); }, m_w[2],  1.0f },
-        // Gaussian rules for reducing overshoot
-        { [=]() { return  gauMF->evaluate(ne) * posLMF->evaluate(nde); }, m_w[3],  1.0f },
-        { [=]() { return  gauMF->evaluate(ne) * negLMF->evaluate(nde); }, m_w[3], -1.0f },
-    };
+    // --- Update fuzzy rules or weights if need ---
 
     // --- Defuzzification ---
     float numerator   = 0.0f;
     float denominator = 0.0f;
-
-    for (const auto& rule : m_rules) {
-        float ruleValue = rule.condition();
-        numerator += ruleValue * rule.weight * rule.output;
-        denominator += ruleValue;
+    for (const auto& rule : m_fcRules) {
+        auto [n, d] = rule.evaluate(m_fuzzyData, dt); // Evaluate the rule with normalized error and derivative error
+        numerator += d;
+        denominator += n;
     }
 
-    float output = (denominator != 0.0f) ? numerator / denominator : 0.0f;
-    output *= output_gain;
-    output = clamp(output, -m_outputMax, m_outputMax);
-    m_fuzzyOutput = output;
+    std::cout << "Numerator: " << numerator << ", Denominator: " << denominator << std::endl;
 
-	return m_fuzzyOutput;
+    // --- Normalize output ---
+    float output = (denominator != 0.0f) ? numerator / denominator : 0.0f;
+    output *= m_fuzzyData.getOutputGain();
+    output = clamp(output, -m_fuzzyData.getMaxOutput(), m_fuzzyData.getMaxOutput());
+    m_fuzzyData.fuzzyOutput = output;
+
+	return m_fuzzyData.fuzzyOutput;
 }
+
+void FLController::setLimits(float eLim, float dLim, float iLim, float outputGain, float outputMax) {
+    m_fuzzyData.setLimits(eLim, iLim, dLim);
+	m_fuzzyData.setOutputGain(outputGain);
+    m_fuzzyData.setMaxOutput(outputMax);
+}
+
+void FLController::setOutputMax(float outputMax) {
+    m_fuzzyData.setMaxOutput(outputMax);
+}
+
+void FLController::setRules(const std::vector<FLCRuleSet>& rules) {
+    m_fcRules = rules;
+}  
 
 float FLController::normalize(float x, float limit) const {
     return clamp(x / std::abs(limit), -1.0f, 1.0f);
-}
-
-float FLController::positiveNL(float x) {
-    return (((x * x * x + x) / 2020.0) + 0.5);
-}
-
-float FLController::negativeNL(float x) {
-    return (((-x * x * x - x) / 2020.0) + 0.5);
 }
