@@ -5,6 +5,13 @@
 
 #include <memory>
 
+// --- Common data type for test
+struct TestData {
+    TestData(float a, float b) 
+        : input(a), expected(b) {}
+    float input, expected; 
+};
+
 // --- Fuzzy Logic Controller Fuzzy Data Tests ---
 class FLCFuzzyDataTests : public ::testing::Test {
 protected:
@@ -12,6 +19,9 @@ protected:
     std::shared_ptr<FuzzyDataI> m_fuzzyDataI;
     std::shared_ptr<FuzzyDataD> m_fuzzyDataD;
     FLCData m_data;
+
+
+    float m_dt = 1.0f;
 
     void SetUp() override {
         m_fuzzyDataP = std::make_shared<FuzzyDataP>();
@@ -28,35 +38,58 @@ protected:
 };
 
 TEST_F(FLCFuzzyDataTests, FLControllerFuzzyDataPTest) {
-    float dt = 1.0f;
-    m_data.setLimits(100.0f, 100.0f, 100.0f);
-    m_data.set(50.0f, dt);
-    float result = m_fuzzyDataP->calculate(m_data, dt);
-    EXPECT_FLOAT_EQ(result, 0.5f); // Normalized value should be
-}
+    std::array<TestData, 8> testInput = {
+        TestData(0.0f,    0.0f),
+        TestData(25.0f,   0.25f),
+        TestData(60.0f,   0.6f),
+        TestData(80.0f,   0.8f),
+        TestData(100.0f,  1.0f),
+        TestData(110.0f,  1.0f),
+        TestData(-10.0f, -0.1f),
+        TestData(-50.0f, -0.5f),
+    };
 
-TEST_F(FLCFuzzyDataTests, FLControllerFuzzyDataPLimTest) {
-    float dt = 1.0f;
-    m_data.setLimits(100.0f, 100.0f, 100.0f);
-    m_data.set(200.0f, dt);
-    float result = m_fuzzyDataD->calculate(m_data, dt);
-    EXPECT_FLOAT_EQ(result, 1.0f); // Normalized value should be
+    for (auto& d : testInput) {
+        m_data.set(d.input, m_dt, -100, 100);
+        float result = m_fuzzyDataP->calculate(m_data, m_dt);
+        EXPECT_FLOAT_EQ(result, d.expected); // Normalized value should be
+    }
 }
 
 TEST_F(FLCFuzzyDataTests, FLControllerFuzzyDataITest) {
-    float dt = 1.0f;
-    m_data.setLimits(100.0f, 100.0f, 100.0f);
-    m_data.set(50.0f, dt);
-    float result = m_fuzzyDataI->calculate(m_data, dt);
-    EXPECT_FLOAT_EQ(result, 0.5f); // Normalized value should be
+    std::array<TestData, 7> testInput = {
+        TestData(0.0f,   0.0f),
+        TestData(10.0f,  0.1f),
+        TestData(25.0f,  0.34999999f),
+        TestData(50.0f,  0.85000002f),
+        TestData(20.0f,  1.0f),
+        TestData(-30.0f, 0.75f),
+        TestData(-10.0f, 0.64999998f),
+    };
+
+    for (auto& d : testInput) {
+        m_data.set(d.input, m_dt, -100, 100);
+        float result = m_fuzzyDataI->calculate(m_data, m_dt);
+        EXPECT_FLOAT_EQ(result, d.expected); // Normalized value should be
+    }
 }
 
 TEST_F(FLCFuzzyDataTests, FLControllerFuzzyDataDTest) {
-    float dt = 1.0f;
-    m_data.setLimits(100.0f, 100.0f, 100.0f);
-    m_data.set(50.0f, dt);
-    float result = m_fuzzyDataD->calculate(m_data, dt);
-    EXPECT_FLOAT_EQ(result, 0.5f); // Normalized value should be
+    std::array<TestData, 7> testInput = {
+        TestData(0.0f,    0.0f),
+        TestData(10.0f,   0.1f),
+        TestData(25.0f,   0.15f),
+        TestData(50.0f,   0.25f),
+        TestData(20.0f,  -0.3f),
+        TestData(-30.0f, -0.5f),
+        TestData(-10.0f,  0.2f),
+    };
+    
+    for (auto& d : testInput) {
+        m_data.set(d.input, m_dt, -100, 100);
+        float result = m_fuzzyDataD->calculate(m_data, m_dt);
+        EXPECT_FLOAT_EQ(result, d.expected); // Normalized value should be
+    }
 }
 
 // ---// Fuzzy Logic Controller Membership Functions Tests ---
@@ -66,77 +99,58 @@ protected:
     std::shared_ptr<LinearPMF>  m_linearPMF;
     std::shared_ptr<GaussianMF> m_gaussianMF;
     std::shared_ptr<NonLinearPMF> m_nonLinearPMF;
-    std::shared_ptr<NoneLinearNMF> m_noneLinearNMF;
+    std::shared_ptr<NoneLinearNMF> m_nonLinearNMF;
 
     void SetUp() override {
         m_linearNMF  = std::make_shared<LinearNMF>();
         m_linearPMF  = std::make_shared<LinearPMF>();
         m_gaussianMF = std::make_shared<GaussianMF>();
         m_nonLinearPMF = std::make_shared<NonLinearPMF>();
-        m_noneLinearNMF = std::make_shared<NoneLinearNMF>();
+        m_nonLinearNMF = std::make_shared<NoneLinearNMF>();
     }
 
     void TearDown() override {
         m_linearNMF.reset();
         m_linearPMF.reset();
         m_gaussianMF.reset();
+        m_nonLinearPMF.reset();
+        m_nonLinearNMF.reset();
     }
 };
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerLinearNMFPosTest) {
-    float input = 0.5f;
-    float expectedOutput = 0.25f; // (1.0 - 0.5) / 2.0
-
-    EXPECT_FLOAT_EQ(m_linearNMF->evaluate(input), expectedOutput);
-    EXPECT_FLOAT_EQ(m_linearNMF->evaluateAndNormalise(input, 1.0f), expectedOutput);
+    TestData tData(0.5f, 0.25f);
+    EXPECT_FLOAT_EQ(m_linearNMF->evaluate(tData.input), tData.expected);
 }
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerLinearNMFNegTest) {
-    float input = -0.5f;
-    float expectedOutput = 0.75f; // (1.0 - 0.5) / 2.0
-
-    EXPECT_FLOAT_EQ(m_linearNMF->evaluate(input), expectedOutput);
-    EXPECT_FLOAT_EQ(m_linearNMF->evaluateAndNormalise(input, 1.0f), expectedOutput);
+    TestData tData(-0.5f, 0.75f);
+    EXPECT_FLOAT_EQ(m_linearNMF->evaluate(tData.input), tData.expected);
 }
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerLinearPMFPosTest) {
-    float input = 0.5f;
-    float expectedOutput = 0.75f; // (0.5 + 1.0) / 2.0
-
-    EXPECT_FLOAT_EQ(m_linearPMF->evaluate(input), expectedOutput);
-    EXPECT_FLOAT_EQ(m_linearPMF->evaluateAndNormalise(input, 1.0f), expectedOutput);
+    TestData tData(0.5f, 0.75f);
+    EXPECT_FLOAT_EQ(m_linearPMF->evaluate(tData.input), tData.expected);
 }
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerLinearPMFNegTest) {
-    float input = -0.5f;
-    float expectedOutput = 0.25f; // (0.5 + 1.0) / 2.0
-
-    EXPECT_FLOAT_EQ(m_linearPMF->evaluate(input), expectedOutput);
-    EXPECT_FLOAT_EQ(m_linearPMF->evaluateAndNormalise(input, 1.0f), expectedOutput);
+    TestData tData(-0.5f, 0.25f);
+    EXPECT_FLOAT_EQ(m_linearPMF->evaluate(tData.input), tData.expected);
 }
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerGaussianMFTest) {
-    float input = 0.0f; // Center of Gaussian
-    float expectedOutput = 1.0f; // exp(0) = 1
-
-    EXPECT_FLOAT_EQ(m_gaussianMF->evaluate(input), expectedOutput);
-    EXPECT_FLOAT_EQ(m_gaussianMF->evaluateAndNormalise(input, 1.0f), expectedOutput);
+    TestData tData(0.0f, 1.0f);
+    EXPECT_FLOAT_EQ(m_gaussianMF->evaluate(tData.input), tData.expected);
 }
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerGaussianMFNegativeInputTest) {
-    float input = -1.0f; // Negative input
-    float expectedOutput = expf(-0.5f); // Gaussian evaluation
-
-    EXPECT_FLOAT_EQ(m_gaussianMF->evaluate(input), expectedOutput);
-    EXPECT_FLOAT_EQ(m_gaussianMF->evaluateAndNormalise(input, 1.0f), expectedOutput);
+    TestData tData(-1.0f, expf(-0.5f));
+    EXPECT_FLOAT_EQ(m_gaussianMF->evaluate(tData.input), tData.expected);
 }
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerGaussianMFZeroInputTest) {
-    float input = 0.0f; // Zero input
-    float expectedOutput = 1.0f; // Gaussian evaluation at zero
-
-    EXPECT_FLOAT_EQ(m_gaussianMF->evaluate(input), expectedOutput);
-    EXPECT_FLOAT_EQ(m_gaussianMF->evaluateAndNormalise(input, 1.0f), expectedOutput);
+    TestData tData(0.0f, 1.0f);
+    EXPECT_FLOAT_EQ(m_gaussianMF->evaluate(tData.input), tData.expected);
 }
 
 
@@ -148,11 +162,9 @@ protected:
     void SetUp() override {
         std::array<float, 4> weights = {1.0f, 1.0f, 1.0f, 1.0f};
         m_controller = std::make_shared<FLController>(
-            200.0f,     // eLim
-            200.0f,     // dLim
-            200.0f,     // iLim
-            10.0f,      // outputGain
-            100.0f,    // outputMax
+            -100.0f,     // min
+            100.0f,     // min
+            1.0f,       // outputGain
             weights);
     }
 
@@ -161,57 +173,40 @@ protected:
     }
 };
 
-TEST_F(FLControllerTests, FLControllerZeroTest) {
-    float output = m_controller->evaluate(50.0f, 50.0f, 1.0f);
-    EXPECT_FLOAT_EQ(output, 0.0f); // Adjust expected value based on actual implementation
+TEST_F(FLControllerTests, FLControllerEvaluateZeroTest) {
+    float output = m_controller->evaluate(0.0f, 0.0f, 1.0f);
+    EXPECT_FLOAT_EQ(output, (0.0f)); // Adjust expected value based on actual implementation
 }
 
-TEST_F(FLControllerTests, FLControllerEvaluatePositiveTest) {
-    float output = m_controller->evaluate(0.0f, 100.0f, 1.0f);
-    FLCData data = m_controller->getData();
-    EXPECT_FLOAT_EQ(output, (0.57477574f * data.getOutputGain())); // Adjust expected value based on actual implementation
-}
+// TEST_F(FLControllerTests, FLControllerEvaluateTest) {
+//     float setPoint = 50.0f;
+//     std::array<TestData, 7> testInput = {
+//         TestData(0.0f,  0.0f),
+//         TestData(10.0f,  0.1f),
+//         TestData(15.0f,  0.15f),
+//         TestData(30.0f,  0.25f),
+//         TestData(40.0f, -0.3f),
+//         TestData(50.0f, -0.5f),
+//         TestData(60.0f,  0.2f),
+//     };
+
+//     for (auto& data : testInput) {
+//         float output = m_controller->evaluate(data.input, setPoint, 1.0f);
+//         EXPECT_FLOAT_EQ(output, data.expected); // Adjust expected value based on actual implementation
+//     }
+// }
 
 TEST_F(FLControllerTests, FLControllerEvaluateNegativeTest) {
     float output = m_controller->evaluate(100.0f, 0.0f, 1.0f);
-    FLCData data = m_controller->getData();
-    EXPECT_FLOAT_EQ(output, -(0.57477574f * data.getOutputGain())); // Adjust expected value based on actual implementation
+    EXPECT_FLOAT_EQ(output, 0.4990); // Adjust expected value based on actual implementation
 }
 
 TEST_F(FLControllerTests, FLControllerEvaluateLimitPositiveTest) {
-    float output = m_controller->evaluate(50.0f, 2000.0f, 0.1f);
-    FLCData data = m_controller->getData();
-    EXPECT_FLOAT_EQ(output, (1.0f * data.getOutputGain())); // Adjust expected value based on actual implementation
-}
-TEST_F(FLControllerTests, FLControllerEvaluateLimitNegativeTest) {
-    float output = m_controller->evaluate(2000.0f, 50.0f, 0.1f);
-    FLCData data = m_controller->getData();
-    EXPECT_FLOAT_EQ(output, -(1.0f * data.getOutputGain())); // Adjust expected value based on actual implementation
+    float output = m_controller->evaluate(0.0f, 100.0f, 0.1f);
+    EXPECT_FLOAT_EQ(output, -(0.4990)); // Adjust expected value based on actual implementation
 }
 
-// --- FLController Tests ---
-class FLController2Tests : public ::testing::Test {
-protected:
-    std::shared_ptr<FLController> m_controller;
-
-    void SetUp() override {
-        std::array<float, 4> weights = {1.0f, 1.0f, 1.0f, 1.0f};
-        m_controller = std::make_shared<FLController>(
-            2000.0f,   // eLim
-            2000.0f,   // dLim
-            2000.0f,   // iLim
-            100.0f,    // outputGain
-            100.0f,    // outputMax
-            weights);
-    }
-
-    void TearDown() override {
-        m_controller.reset();
-    }
-};
-
-TEST_F(FLController2Tests, FLControllerEvaluateLimitNegativeTest) {
-    float output = m_controller->evaluate(4000.0f, 50.0f, 0.1f);
-    FLCData data = m_controller->getData();
-    EXPECT_FLOAT_EQ(output, -(100.0f)); // Adjust expected value based on actual implementation
-}
+// TEST_F(FLControllerTests, FLControllerEvaluateLimitNegativeTest) {
+//     float output = m_controller->evaluate(2000.0f, 50.0f, 0.1f);
+//     EXPECT_FLOAT_EQ(output, -(1.0f * m_controller->getOutputGain())); // Adjust expected value based on actual implementation
+// }

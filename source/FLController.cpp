@@ -6,19 +6,20 @@
 #include <algorithm>
 #include <utility>
 
-FLController::FLController(float eLim, 
-                            float dLim, 
-                            float iLim, 
+FLController::FLController( float normalizationMin,
+					        float normalizationMax,
                             float outputGain, 
-                            float outputMax,
                             std::array<float, 4> weights) :
+        m_normMin(normalizationMin),
+        m_normMax(normalizationMax),
+        m_outputGain(outputGain),
+        m_w(weights),
         m_fuzzyData(), 
-        m_fcRules(), 
-        m_w(weights) {
+        m_fcRules(),
+        m_FLCRules() {
     m_fuzzyData.reset();
-    m_fuzzyData.setLimits(eLim, iLim, dLim);
-    m_fuzzyData.setOutputGain(outputGain);
-    m_fuzzyData.setMaxOutput(outputMax);
+    m_fuzzyData.setMinMax(m_normMin, m_normMax);
+    std::cout << std::fixed << std::setprecision(3);
 
     // m_w[0] = 1.0;
     // m_w[1] = 0.35;
@@ -32,19 +33,24 @@ FLController::FLController(float eLim,
     auto pDada  = std::make_shared<FuzzyDataP>();
     auto IData  = std::make_shared<FuzzyDataI>();
     auto dData  = std::make_shared<FuzzyDataD>();
-    
-    m_fcRules = {
-        FLCRuleSet(posLMF, pDada, posLMF, dData, m_w[0],  1.0f), // P+ rule
-        FLCRuleSet(negLMF, pDada, negLMF, dData, m_w[0], -1.0f), // P- rule
 
-        FLCRuleSet(posLMF, dData, negLMF, pDada, m_w[1],  1.0f), // D+ rule
-        FLCRuleSet(negLMF, dData, posLMF, pDada, m_w[1], -1.0f), // D- rule
+    auto prodOperator = std::make_shared<FLCProductOperator>();
 
-        FLCRuleSet(posLMF, pDada, posLMF, IData, m_w[2],  1.0f), // I+ rule
-        FLCRuleSet(negLMF, pDada, negLMF, IData, m_w[2], -1.0f), // I- rule
+    float outGain = 1.0f;
 
-        FLCRuleSet(posLMF, dData, gauMF,  pDada, m_w[3],  1.0f), // Gaussian rule for reducing overshoot
-        FLCRuleSet(negLMF, dData, gauMF,  pDada, m_w[3], -1.0f)  // Gaussian rule for reducing overshoot
+    m_FLCRules = {
+        // P+ and P- rules
+        FLCRule(FLCSet(posLMF, pDada), FLCSet(posLMF, dData), prodOperator, m_w[0], outGain, FLCRule::POSITIVE), // P+
+        FLCRule(FLCSet(negLMF, pDada), FLCSet(negLMF, dData), prodOperator, m_w[0], outGain, FLCRule::NEGATIVE), // P-
+        // D+ and D- rules
+        FLCRule(FLCSet(posLMF, dData), FLCSet(negLMF, pDada), prodOperator, m_w[1], outGain, FLCRule::POSITIVE), // D+
+        FLCRule(FLCSet(negLMF, dData), FLCSet(posLMF, pDada), prodOperator, m_w[1], outGain, FLCRule::NEGATIVE), // D-
+        // I+ and I- rules
+        FLCRule(FLCSet(posLMF, pDada), FLCSet(posLMF, IData), prodOperator, m_w[2], outGain, FLCRule::POSITIVE), // I+
+        FLCRule(FLCSet(negLMF, pDada), FLCSet(negLMF, IData), prodOperator, m_w[2], outGain, FLCRule::NEGATIVE), // I-
+        // Gaussian rule for reducing overshoot
+        FLCRule(FLCSet(posLMF, dData), FLCSet(gauMF, pDada), prodOperator, m_w[3], outGain, FLCRule::POSITIVE), // G+
+        FLCRule(FLCSet(negLMF, dData), FLCSet(gauMF, pDada), prodOperator, m_w[3], outGain, FLCRule::NEGATIVE), // G-
     };
 }
 
@@ -52,46 +58,35 @@ void FLController::reset() {
 	m_fuzzyData.reset();
 }
 
-float FLController::evaluate(float input, float setpoint, float dt) {   
+float FLController::evaluate(float input, float setpoint, float dt) { 
+    std::cout << "input: " << input << ", setpoint: " << setpoint << std::endl;
+    
     // --- Compute error terms ---
-	m_fuzzyData.set(setpoint - input, dt);
+	m_fuzzyData.set(setpoint - input, dt, m_normMax,  m_normMin);
 
     // --- Update fuzzy rules or weights if need ---
 
-    // --- Defuzzification ---
+    // --- Defuzzification using CoG method---
     float numerator   = 0.0f;
     float denominator = 0.0f;
-    for (const auto& rule : m_fcRules) {
+    for (const auto& rule : m_FLCRules) {
         auto [n, d] = rule.evaluate(m_fuzzyData, dt); // Evaluate the rule with normalized error and derivative error
-        numerator += d;
-        denominator += n;
+        numerator += n * d;
+        denominator += d;
     }
-
-    std::cout << "Numerator: " << numerator << ", Denominator: " << denominator << std::endl;
-
+    
     // --- Normalize output ---
     float output = (denominator != 0.0f) ? numerator / denominator : 0.0f;
-    output *= m_fuzzyData.getOutputGain();
-    output = clamp(output, -m_fuzzyData.getMaxOutput(), m_fuzzyData.getMaxOutput());
+    std::cout << "Numerator: " << numerator << ", Denominator: " << denominator << ", out: " << output << std::endl;
     m_fuzzyData.fuzzyOutput = output;
 
 	return m_fuzzyData.fuzzyOutput;
 }
 
-void FLController::setLimits(float eLim, float dLim, float iLim, float outputGain, float outputMax) {
-    m_fuzzyData.setLimits(eLim, iLim, dLim);
-	m_fuzzyData.setOutputGain(outputGain);
-    m_fuzzyData.setMaxOutput(outputMax);
+void FLController::setLimits(float eLim, float dLim, float iLim, float outputGain) {
+    m_outputGain = outputGain;
 }
 
-void FLController::setOutputMax(float outputMax) {
-    m_fuzzyData.setMaxOutput(outputMax);
-}
-
-void FLController::setRules(const std::vector<FLCRuleSet>& rules) {
-    m_fcRules = rules;
-}  
-
-float FLController::normalize(float x, float limit) const {
-    return clamp(x / std::abs(limit), -1.0f, 1.0f);
-}
+void FLController::setRules(const std::vector<FLCRule>& rules) {
+    m_FLCRules = rules;
+} 
