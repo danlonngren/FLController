@@ -13,10 +13,16 @@
 #include <iostream>
 #include <iomanip>
 
-#define ENABLE_LOGGING 1
 
-template<typename T>
-T clamp(T val, T minVal, T maxVal) {
+// --- Logging extraction ---
+constexpr bool ENABLE_LOGGING = true;
+
+inline void log(const std::string& msg) {
+    if constexpr (ENABLE_LOGGING)
+        std::cout << msg << std::endl;
+}
+
+inline float clamp(float val, float minVal, float maxVal) {
     if (val < minVal) return minVal;
     else if (val > maxVal) return maxVal;
     else return val;
@@ -38,65 +44,22 @@ inline float normZeroToOne(float x, float x_min, float x_max) {
     return clamp(a, -1.0f, 1.0f);  // no clamp needed unless you want to guard against overshoot
 }
 
-// --- Fuzzy Logic Controller Data ---
-class FLCData {
-public:
-	float fuzzyOutput;
-	float m_p, m_i, m_d;
-	float m_min, m_max;
-
-	FLCData() : 
-        m_p(0.0f), m_i(0.0f), m_d(0.0f), 
-        m_min(0.0f), m_max(0.0f) {}
-
-	void set(float p, float i, float d, float min, float max) {
-		m_p = p;
-		m_i = i;
-		m_d = d;
-        m_min = min;
-        m_max = max;
-		if (ENABLE_LOGGING)
-			std::cout 
-			<< "Data Set:" 
-			<< " m_p: " << m_p << ", m_i: " << m_i << ", m_d: " << m_d 
-			<< std::endl;
-	}
-
-	void setMinMax(float min, float max) {
-		m_min = min; 
-        m_max = max;
-	}
-
-	void reset() { 
-        m_p = m_i = m_d = 0.0f;
-        fuzzyOutput = m_min = m_max = 0.0f; 
-    }
-};
-
 // --- Fuzzy Logic data types ---
 class FuzzyData {
 public:
-    virtual float getData(const FLCData& data) const = 0;
+    virtual float getData() const = 0;
+    virtual void setData(float value) = 0;
     virtual ~FuzzyData() = default;
 };
 
-class FuzzyDataP : public FuzzyData {
+class FuzzyDataBasic : public FuzzyData {
+    float value;
 public:
-    float getData( const FLCData& data) const override 
-        { return data.m_p; }
-};
-
-class FuzzyDataI : public FuzzyData {
-public:
-    float getData(const FLCData& data) const override 
-        { return data.m_i; }
-};
-
-class FuzzyDataD : public FuzzyData {
-private:
-public:
-    float getData( const FLCData& data) const override 
-        { return data.m_d; }
+    FuzzyDataBasic(float val = 0.0f) : value(val) {};
+    float getData() const override { return value; }
+    void setData(float val) {
+        value = val;
+    }
 };
 
 // --- Membership functions interface ---
@@ -131,6 +94,18 @@ public:
     float evaluate(float x) const override {
         float diff = x - mean;
         return std::exp(-(diff * diff) / (2.0f * sigma * sigma));
+    }
+};
+class GaussianNMF : public MembershipFunction {
+    float mean;
+    float sigma;
+public:
+    GaussianNMF(float mean = 0.0f, float sigma = 0.3f) : 
+		mean(mean), sigma(sigma) {}
+
+    float evaluate(float x) const override {
+        float diff = x - mean;
+        return -std::exp(-(diff * diff) / (2.0f * sigma * sigma));
     }
 };
 
@@ -190,106 +165,95 @@ public:
     }
 };
 
-// --- Fuzzy Logic Operators ---
-class FLCOperators {
+class outputPos : public MembershipFunction {
 public:
-	virtual ~FLCOperators() = default;
-	virtual float operation(float normA, float normB) const = 0;
+    float evaluate(float x) const override {
+        return x; // Do nothing
+    }
 };
 
-class FLCAndOperator : public FLCOperators {
+class outputNeg : public MembershipFunction {
 public:
-	float operation(float normA, float normB) const override {
-		return std::min(normA, normB); // Minimum for AND operation
-	}
-};
-
-class FLCOrOperator : public FLCOperators {
-public:
-	float operation(float normA, float normB) const override {
-		return std::max(normA, normB); // Maximum for OR operation
-	}
-};
-
-class FLCSumOperator : public FLCOperators {
-public:
-	float operation(float normA, float normB) const override {
-		return normA + normB; // Sum for SUM operation
-	}
-};
-
-class FLCProdOperator : public FLCOperators {
-public:
-	float operation(float normA, float normB) const override {
-		return normA * normB; // Product for PRODUCT operation
-	}
+    float evaluate(float x) const override {
+        return x * -1.0f;
+    }
 };
 
 // --- Fuzzy Sets With MF and Data ---
 struct FLCSet {
 	std::shared_ptr<MembershipFunction> mf;
 	std::shared_ptr<FuzzyData> data;
-	FLCSet(	std::shared_ptr<MembershipFunction> mf = nullptr, 
-			std::shared_ptr<FuzzyData> data = nullptr) 
+	FLCSet(	std::shared_ptr<MembershipFunction> mf, std::shared_ptr<FuzzyData> data) 
 		: mf(mf), data(data) {}
     
-    float evaluate( FLCData& _data ) const {
-        return mf->evaluate(data->getData(_data));
+    float evaluate() const {
+        return mf->evaluate(data->getData());
     }
 };
 
 // --- Fuzzy Logic Controller Set ---
 class FLCRule {
 public:
-	enum FLCType { POS, NEG, ZERO };
-
+	enum FLCType { POS, NEG, ZERO }; // Sugeno-Style Output
+    enum FLCOperatorsType { PROD, AND, OR, SUM, BOUNDEDSUM, BOUNDEDDIFF };
 private:
 	std::array<FLCSet, 2> m_set;
-	std::shared_ptr<FLCOperators> m_operator;
+	FLCOperatorsType m_operator;
 	FLCType m_type;
 	float m_weight;
 
 public:
-	FLCRule(FLCSet set1, FLCSet set2,
-			std::shared_ptr<FLCOperators> op,
+	FLCRule(FLCSet set1, FLCSet set2, FLCOperatorsType op,
 			FLCType type, float weight) :
 		m_set({ set1, set2 }), 
 		m_operator(op), 
 		m_weight(weight),
 		m_type(type) {}
 
-	std::pair<float, float> evaluate(FLCData& data) const {
-		float mfOut1 = m_set[0].evaluate(data);
-		float mfOut2 = m_set[1].evaluate(data);
-		float membership = m_operator->operation(mfOut1, mfOut2);
-		float outScaled = membership * m_weight;
+	std::pair<float, float> evaluate() const {
+		float mf1 = m_set[0].evaluate();
+		float mf2 = m_set[1].evaluate();
+		float membership = flcOperator(mf1, mf2, m_operator);
+		float output = membership * m_weight;
 
-        // Evaluate output fonction
+        // Evaluate output. This should be a membership function
 		if (m_type == FLCType::NEG)
-			outScaled *= -1.0f;
+			output *= -1.0f;
         else if (m_type == FLCType::ZERO)
-            outScaled *= 0.0f;
+            output *= 0.0f;
 
 		std::cout 
-			<< "mfOut1: " << mfOut1 
-			<< ", mfOut2: " << mfOut2 
+			<< "mf1: " << mf1 
+			<< ", mf2: " << mf2 
 			<< ", membership: " << membership 
-			<< ", outScaled: " << outScaled << std::endl;
-		return std::make_pair(outScaled, membership);
+			<< ", output: " << output << std::endl;
+		return std::make_pair(output, membership);
 	}
-};
+
+private:
+    float flcOperator(float a, float b, FLCOperatorsType type) const {
+        switch (type) {
+            case FLCOperatorsType::PROD:        return a * b;
+            case FLCOperatorsType::AND:         return std::min(a, b);
+            case FLCOperatorsType::OR:          return std::max(a, b);
+            case FLCOperatorsType::SUM:         return a + b;
+            case FLCOperatorsType::BOUNDEDSUM:  return std::min(1.0f, a + b);
+            case FLCOperatorsType::BOUNDEDDIFF: return std::max(0.0f, a + b - 1.0f);
+            default:    return 0.0f;
+        }
+    }
+}; // End FLCRule
 
 class FLController : public FLControllerInterface {
 private:
 	float m_normMin, m_normMax;
-	FLCData m_fuzzyData;
 	std::vector<FLCRule> m_FLCRules;
+    float m_fuzzyOutput;
 
 public:
 	FLController(float normalizationMin, float normalizationMax );
-	float evaluate(float pError, float iError, float dError);
+	float evaluate();
 	void setRules(const std::vector<FLCRule>& rules);
-	FLCData getData() const { return m_fuzzyData; }
 	void reset();
 
 private:
@@ -297,7 +261,7 @@ private:
         float numerator   = 0.0f;
         float denominator = 0.0f;
         for (const auto& rule : m_FLCRules) {
-            auto [n, d] = rule.evaluate(m_fuzzyData); // Evaluate the rules
+            auto [n, d] = rule.evaluate(); // Evaluate the rules
             numerator += n;
             denominator += d;
         }
