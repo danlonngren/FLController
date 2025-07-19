@@ -193,107 +193,15 @@ TEST_F(FLControllerTests, FLControllerEvaluateZeroTest) {
         // D+ and D- rules
         FLCRule(dPosSet, pNegSet, prodOperator, FLCRule::POS, weight[1]), // D+
         FLCRule(dNegSet, pPosSet, prodOperator, FLCRule::NEG, weight[1]), // D-
-        // // I+ and I- rules
+        // I+ and I- rules
         FLCRule(pPosSet, iPosSet, prodOperator, FLCRule::POS, weight[2]), // I+
         FLCRule(pNegSet, iNegSet, prodOperator, FLCRule::NEG, weight[2]), // I-
-        // // Gaussian rule for reducing overshoot
+        // Gaussian rule for reducing overshoot
         FLCRule(dPosSet, pGausSet, prodOperator, FLCRule::POS, weight[3]), // G+
         FLCRule(dNegSet, pGausSet, prodOperator, FLCRule::NEG, weight[3])  // G-
     };
+
     m_controller->setRules(fuzzyRules);
-    auto result = m_controller->evaluate(0.0f, 0.0f, 0.0f);
+    auto result = m_controller->evaluate(0.1f, 0.0f, 0.0f);
     EXPECT_FLOAT_EQ(result, 0.0f); // Adjust expected value based on actual implementation
 }
-
-// TEST_F(FLControllerTests, FLControllerEvaluateTest) {
-//     float setPoint = 50.0f;
-//     std::array<TestData, 7> testInput = {
-//         TestData(0.0f,  0.0f),
-//         TestData(10.0f,  0.1f),
-//         TestData(15.0f,  0.15f),
-//         TestData(30.0f,  0.25f),
-//         TestData(40.0f, -0.3f),
-//         TestData(50.0f, -0.5f),
-//         TestData(60.0f,  0.2f),
-//     };
-
-//     for (auto& data : testInput) {
-//         float output = m_controller->evaluate(data.input, setPoint, 1.0f);
-//         EXPECT_FLOAT_EQ(output, data.expected); // Adjust expected value based on actual implementation
-//     }
-// }
-
-// TEST_F(FLControllerTests, FLControllerEvaluateNEGTest) {
-//     float output = m_controller->evaluate(100.0f, 0.0f, 1.0f);
-//     EXPECT_FLOAT_EQ(output, 0.499f); // Adjust expected value based on actual implementation
-// }
-
-// TEST_F(FLControllerTests, FLControllerEvaluateLimitPOSTest) {
-//     float output = m_controller->evaluate(0.0f, 100.0f, 0.1f);
-//     EXPECT_FLOAT_EQ(output, -(0.499f)); // Adjust expected value based on actual implementation
-// }
-
-// TEST_F(FLControllerTests, FLControllerEvaluateLimitNEGTest) {
-//     float output = m_controller->evaluate(2000.0f, 50.0f, 0.1f);
-//     EXPECT_FLOAT_EQ(output, -(1.0f * m_controller->getOutputGain())); // Adjust expected value based on actual implementation
-// }
-
-
-
-// class FLControllerSimplerTests : public ::testing::Test {
-// protected:
-//     FuzzyVariable error, dError, iError, pitchControl;
-
-//     void SetUp() override {
-
-//     }
-
-//     void TearDown() override {
-
-//     }
-// };
-
-// TEST_F(FLControllerSimplerTests, Test1) {
-//     // Input MFs (Gaussian)
-//     error.addTerm(FuzzyLabel::NEG, std::make_shared<LinearNMF>());
-//     error.addTerm(FuzzyLabel::POS, std::make_shared<LinearPMF>());
-
-//     dError.addTerm(FuzzyLabel::NEG, std::make_shared<LinearNMF>());
-//     dError.addTerm(FuzzyLabel::ZERO, std::make_shared<GaussianMF>(0.0f, 0.3f));
-//     dError.addTerm(FuzzyLabel::POS, std::make_shared<LinearPMF>());
-    
-//     iError.addTerm(FuzzyLabel::NEG, std::make_shared<LinearNMF>());
-//     iError.addTerm(FuzzyLabel::POS, std::make_shared<LinearPMF>());
-
-//     // Output MFs (Linear + Gaussian)
-//     pitchControl.addTerm(FuzzyLabel::LOW,    std::make_shared<LinearNMF>());
-//     pitchControl.addTerm(FuzzyLabel::MEDIUM, std::make_shared<GaussianMF>(0.0f, 0.3f));
-//     pitchControl.addTerm(FuzzyLabel::HIGH,   std::make_shared<LinearPMF>());
-
-//     // Rules
-//     FuzzyEngine engine;
-//     engine.setInputVariables(error, dError, iError);
-//     engine.setOutputVariable(pitchControl);
-
-//     engine.addRule({FuzzyLabel::NEG, FuzzyLabel::NEG, FuzzyLabel::NEG, FuzzyLabel::LOW});
-//     engine.addRule({FuzzyLabel::ZERO, FuzzyLabel::ZERO, FuzzyLabel::ZERO, FuzzyLabel::MEDIUM});
-//     engine.addRule({FuzzyLabel::POS, FuzzyLabel::POS, FuzzyLabel::POS, FuzzyLabel::HIGH});
-
-//     // Inputs
-//     float err = 0.0f;
-//     float derr = 0.0f;
-//     float ierr = 0.0f;
-
-//     auto normalize = [](float x, float min, float max) {
-//         float a = (x - min) / (max - min);
-//         return a * 2.0f - 1.0f;
-//     };
-
-//     float eNorm  = std::clamp(normalize(err, -10.0f, 10.0f), -1.0f, 1.0f);
-//     float deNorm = std::clamp(normalize(derr, -5.0f, 5.0f), -1.0f, 1.0f);
-//     float ieNorm = std::clamp(normalize(ierr, -50.0f, 50.0f), -1.0f, 1.0f);
-
-//     float fanOutput = engine.compute(eNorm, deNorm, ieNorm);
-//     std::cout << "Fan Output: " << fanOutput * 100.0f << "%\n";
-//     EXPECT_FLOAT_EQ(10.f, 11.0f);
-// }
