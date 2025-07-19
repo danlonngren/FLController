@@ -17,11 +17,14 @@
 // --- Logging extraction ---
 constexpr bool ENABLE_LOGGING = true;
 
+#define STR(x) std::to_string(x)
+
 inline void log(const std::string& msg) {
     if constexpr (ENABLE_LOGGING)
         std::cout << msg << std::endl;
 }
-
+ 
+// --- Utility ---
 inline float clamp(float val, float minVal, float maxVal) {
     if (val < minVal) return minVal;
     else if (val > maxVal) return maxVal;
@@ -31,10 +34,9 @@ inline float clamp(float val, float minVal, float maxVal) {
 inline float normaliseVal(float x, float x_min, float x_max) {
     float b;
     float a = (x - x_min) / (x_max - x_min); // normalize to [0, 1]
-    std::cout 
-        << "x: " << x << ", a: " << a 
-        << ", x_min: " << x_min << ", x_max: " << x_max 
-        << std::endl;
+    log("x: " + STR(x) + ", a: " +  STR(a) + 
+        ", x_min: " + STR(x_min) + ", x_max: " + STR(x_max) );
+
     b = a * 2.0f - 1.0f;                // scale to [-1, 1]
     return clamp(b, -1.0f, 1.0f);  // no clamp needed unless you want to guard against overshoot
 }
@@ -222,11 +224,9 @@ public:
         else if (m_type == FLCType::ZERO)
             output *= 0.0f;
 
-		std::cout 
-			<< "mf1: " << mf1 
-			<< ", mf2: " << mf2 
-			<< ", membership: " << membership 
-			<< ", output: " << output << std::endl;
+        log("mf1: "+ STR(mf1) + ", mf2: "+ STR(mf2) + 
+            ", membership: "+ STR(membership) + ", output: "+ STR(output));
+
 		return std::make_pair(output, membership);
 	}
 
@@ -265,6 +265,7 @@ private:
             numerator += n;
             denominator += d;
         }
+        log("numerator: " + STR(numerator) + ", denominator: " + STR(denominator));
         float output = (denominator != 0.0f) ? numerator / denominator : 0.0f;
         return output;
     }
