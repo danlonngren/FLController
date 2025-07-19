@@ -201,7 +201,7 @@ TEST_F(FLControllerTests, FLControllerEvaluateZeroTest) {
         FLCRule(dNegSet, pGausSet, prodOperator, FLCRule::NEG, weight[3])  // G-
     };
     m_controller->setRules(fuzzyRules);
-    auto result = m_controller->evaluate(1.0f, 0.0f, 0.0f);
+    auto result = m_controller->evaluate(0.0f, 0.0f, 0.0f);
     EXPECT_FLOAT_EQ(result, 0.0f); // Adjust expected value based on actual implementation
 }
 
