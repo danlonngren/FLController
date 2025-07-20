@@ -49,53 +49,10 @@ TEST_F(FLCFuzzyDataTests, FLControllerNormaliseTest) {
     };
 
     for (auto& data : testInput) {
-        EXPECT_FLOAT_EQ(normaliseVal(data.input, -100.0f, 100.0f), data.expected); // Normalized value should be
+        EXPECT_FLOAT_EQ(normalizeToMinus1To1(data.input, -100.0f, 100.0f), data.expected); // Normalized value should be
     }
 }
 
-// TEST_F(FLCFuzzyDataTests, FLControllerFuzzyDataPTest) {
-//     std::array<TestData, 4> testInput = {
-//         TestData(0.0f,   0.0f),
-//         TestData(10.0f,  10.0f),
-//         TestData(25.0f,  25.0f),
-//         TestData(-50.0f,  -50.0f),
-//     };
-
-//     for (auto& data : testInput) {
-//         float result = m_fuzzyDataP->getData(data.input);
-//         EXPECT_FLOAT_EQ(result, data.expected); // Normalized value should be
-//     }
-// }
-
-// TEST_F(FLCFuzzyDataTests, FLControllerFuzzyDataITest) {
-//     std::array<TestData, 4> testInput = {
-//         TestData(0.0f,   0.0f),
-//         TestData(10.0f,  10.0f),
-//         TestData(25.0f,  25.0f),
-//         TestData(-50.0f,  -50.0f),
-//     };
-
-//     for (auto& data : testInput) {
-//         m_data.set(0.0f, data.input, 0.0f);
-//         float result = m_fuzzyDataI->getData(m_data);
-//         EXPECT_FLOAT_EQ(result, data.expected); // Normalized value should be
-//     }
-// }
-
-// TEST_F(FLCFuzzyDataTests, FLControllerFuzzyDataDTest) {
-//     std::array<TestData, 4> testInput = {
-//         TestData(0.0f,    0.0f),
-//         TestData(10.0f,   10.0f),
-//         TestData(25.0f,   25.0f),
-//         TestData(-50.0f,   -50.0f),
-//     };
-    
-//     for (auto& data : testInput) {
-//         m_data.set(0.0f, 0.0f, data.input);
-//         float result = m_fuzzyDataD->getData(m_data);
-//         EXPECT_FLOAT_EQ(result, data.expected); // Normalized value should be
-//     }
-// }
 
 // ---// Fuzzy Logic Controller Membership Functions Tests ---
 class FLCMembershipFunctionsTests : public ::testing::Test {
@@ -184,17 +141,17 @@ protected:
 TEST_F(FLControllerTests, FLControllerEvaluateZeroTest) {
     float weight[4] {1.0f, 1.0f, 1.0f, 1.0f};
     
-    FLCSet pPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
-    FLCSet pNegSet(std::make_shared<LinearCenterNMF>(), m_pData);
+    FLCBindingSet pPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
+    FLCBindingSet pNegSet(std::make_shared<LinearCenterNMF>(), m_pData);
     
-    FLCSet dPosSet(std::make_shared<LinearCenterPMF>(), m_dData);
-    FLCSet dNegSet(std::make_shared<LinearCenterNMF>(), m_dData);
+    FLCBindingSet dPosSet(std::make_shared<LinearCenterPMF>(), m_dData);
+    FLCBindingSet dNegSet(std::make_shared<LinearCenterNMF>(), m_dData);
 
-    FLCSet iPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
-    FLCSet iNegSet(std::make_shared<LinearCenterNMF>(), m_iData);
+    FLCBindingSet iPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
+    FLCBindingSet iNegSet(std::make_shared<LinearCenterNMF>(), m_iData);
 
-    FLCSet pGausSet(std::make_shared<GaussianMF>(), m_iData);
-    FLCSet pGausNegSet(std::make_shared<GaussianMF>(), m_iData);
+    FLCBindingSet pGausSet(std::make_shared<GaussianMF>(), m_iData);
+    FLCBindingSet pGausNegSet(std::make_shared<GaussianMF>(), m_iData);
 
     auto fuzzyRules = {
         // P+ and P- rules
@@ -219,11 +176,11 @@ TEST_F(FLControllerTests, FLControllerEvaluateZeroTest) {
 TEST_F(FLControllerTests, FLControllerEvaluatePTest) {
     float weight[4] {1.0f, 1.0f, 1.0f, 1.0f};
     
-    FLCSet pPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
-    FLCSet pNegSet(std::make_shared<LinearCenterNMF>(), m_pData);
+    FLCBindingSet pPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
+    FLCBindingSet pNegSet(std::make_shared<LinearCenterNMF>(), m_pData);
     
-    FLCSet dPosSet(std::make_shared<LinearCenterPMF>(), m_dData);
-    FLCSet dNegSet(std::make_shared<LinearCenterNMF>(), m_dData);
+    FLCBindingSet dPosSet(std::make_shared<LinearCenterPMF>(), m_dData);
+    FLCBindingSet dNegSet(std::make_shared<LinearCenterNMF>(), m_dData);
 
     auto fuzzyRules = {
         // P+ and P- rules
@@ -251,11 +208,11 @@ TEST_F(FLControllerTests, FLControllerEvaluatePTest) {
 TEST_F(FLControllerTests, FLControllerEvaluateITest) {
     float weight[4] {1.0f, 1.0f, 1.0f, 1.0f};
     
-    FLCSet pPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
-    FLCSet pNegSet(std::make_shared<LinearCenterNMF>(), m_pData);
+    FLCBindingSet pPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
+    FLCBindingSet pNegSet(std::make_shared<LinearCenterNMF>(), m_pData);
 
-    FLCSet iPosSet(std::make_shared<LinearCenterPMF>(), m_iData);
-    FLCSet iNegSet(std::make_shared<LinearCenterNMF>(), m_iData);
+    FLCBindingSet iPosSet(std::make_shared<LinearCenterPMF>(), m_iData);
+    FLCBindingSet iNegSet(std::make_shared<LinearCenterNMF>(), m_iData);
 
     auto fuzzyRules = {
         // // I+ and I- rules
@@ -284,17 +241,17 @@ TEST_F(FLControllerTests, FLControllerEvaluateITest) {
 TEST_F(FLControllerTests, FLControllerEvaluateDTest) {
     float weight[4] {1.0f, 1.0f, 1.0f, 1.0f};
     
-    FLCSet pPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
-    FLCSet pNegSet(std::make_shared<LinearCenterNMF>(), m_pData);
+    FLCBindingSet pPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
+    FLCBindingSet pNegSet(std::make_shared<LinearCenterNMF>(), m_pData);
     
-    FLCSet dPosSet(std::make_shared<LinearCenterPMF>(), m_dData);
-    FLCSet dNegSet(std::make_shared<LinearCenterNMF>(), m_dData);
+    FLCBindingSet dPosSet(std::make_shared<LinearCenterPMF>(), m_dData);
+    FLCBindingSet dNegSet(std::make_shared<LinearCenterNMF>(), m_dData);
 
-    FLCSet iPosSet(std::make_shared<LinearCenterPMF>(), m_iData);
-    FLCSet iNegSet(std::make_shared<LinearCenterNMF>(), m_iData);
+    FLCBindingSet iPosSet(std::make_shared<LinearCenterPMF>(), m_iData);
+    FLCBindingSet iNegSet(std::make_shared<LinearCenterNMF>(), m_iData);
 
-    FLCSet pGausSet(std::make_shared<GaussianMF>(), m_iData);
-    FLCSet pGausNegSet(std::make_shared<GaussianMF>(), m_iData);
+    FLCBindingSet pGausSet(std::make_shared<GaussianMF>(), m_iData);
+    FLCBindingSet pGausNegSet(std::make_shared<GaussianMF>(), m_iData);
 
     auto fuzzyRules = {
         // P+ and P- rules
@@ -331,10 +288,10 @@ TEST_F(FLControllerTests, FLControllerEvaluateDTest) {
 }
 
 TEST_F(FLControllerTests, FLControllerEvaluateGTest) {       
-    FLCSet dPosSet(std::make_shared<LinearCenterPMF>(), m_dData);
-    FLCSet dNegSet(std::make_shared<LinearCenterNMF>(), m_dData);
-    FLCSet pGausSet(std::make_shared<GaussianMF>(), m_pData);
-    // FLCSet pNGausSet(std::make_shared<GaussianNMF>(), m_pData);
+    FLCBindingSet dPosSet(std::make_shared<LinearCenterPMF>(), m_dData);
+    FLCBindingSet dNegSet(std::make_shared<LinearCenterNMF>(), m_dData);
+    FLCBindingSet pGausSet(std::make_shared<GaussianMF>(), m_pData);
+    // FLCBindingSet pNGausSet(std::make_shared<GaussianNMF>(), m_pData);
 
     auto fuzzyRules = {
         // Gaussian rule for reducing overshoot
@@ -363,16 +320,16 @@ TEST_F(FLControllerTests, FLControllerEvaluateGTest) {
 TEST_F(FLControllerTests, FLControllerEvaluatePIDTest) {
     float weight[4] {1.3f, 0.3f, 0.7f, 1.0f};
     
-    FLCSet pPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
-    FLCSet pNegSet(std::make_shared<LinearCenterNMF>(), m_pData);
+    FLCBindingSet pPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
+    FLCBindingSet pNegSet(std::make_shared<LinearCenterNMF>(), m_pData);
     
-    FLCSet dPosSet(std::make_shared<LinearCenterPMF>(), m_dData);
-    FLCSet dNegSet(std::make_shared<LinearCenterNMF>(), m_dData);
+    FLCBindingSet dPosSet(std::make_shared<LinearCenterPMF>(), m_dData);
+    FLCBindingSet dNegSet(std::make_shared<LinearCenterNMF>(), m_dData);
 
-    FLCSet iPosSet(std::make_shared<LinearCenterPMF>(), m_iData);
-    FLCSet iNegSet(std::make_shared<LinearCenterNMF>(), m_iData);
+    FLCBindingSet iPosSet(std::make_shared<LinearCenterPMF>(), m_iData);
+    FLCBindingSet iNegSet(std::make_shared<LinearCenterNMF>(), m_iData);
 
-    FLCSet pGausSet(std::make_shared<GaussianMF>(), m_iData);
+    FLCBindingSet pGausSet(std::make_shared<GaussianMF>(), m_iData);
 
     auto fuzzyRules = {
         // P+ and P- rules
@@ -405,7 +362,8 @@ TEST_F(FLControllerTests, FLControllerEvaluatePIDTest) {
     };
     
     float delta = 100.0f;
-    float i, d; 
+    float i = 0.0f;
+    float d = 0.0f; 
     float dt = 0.001f;
     for (const auto& data : testInput) {
 
@@ -413,9 +371,9 @@ TEST_F(FLControllerTests, FLControllerEvaluatePIDTest) {
         d = data.input - delta;
         delta = data.input;
 
-        m_pData->setData(normaliseVal(data.input, -100.0f, 100.0f));
-        m_iData->setData(normaliseVal(i, -100.0f, 100.0f));
-        m_dData->setData(normaliseVal(d, -100.0f, 100.0f));
+        m_pData->setData(normalizeToMinus1To1(data.input, -100.0f, 100.0f));
+        m_iData->setData(normalizeToMinus1To1(i, -100.0f, 100.0f));
+        m_dData->setData(normalizeToMinus1To1(d, -100.0f, 100.0f));
         float result = m_controller->evaluate();
         EXPECT_FLOAT_EQ(result * 100.0f, data.expected);
     }
