@@ -18,8 +18,6 @@ float FLController::evaluate() {
     // --- Defuzzification using CoG method ---
     m_fuzzyOutput = defuzzifyWeightedAvg(m_FLCRules);
 
-    log("Fuzzy Output: " + STR(m_fuzzyOutput));
-
 	return m_fuzzyOutput;
 }
 

@@ -360,48 +360,63 @@ TEST_F(FLControllerTests, FLControllerEvaluateGTest) {
     }
 }
 
-// TEST_F(FLControllerTests, FLControllerEvaluatePIDTest) {
-//     float weight[4] {1.3f, 0.3f, 1.0f, 0.3f};
+TEST_F(FLControllerTests, FLControllerEvaluatePIDTest) {
+    float weight[4] {1.3f, 0.3f, 0.7f, 1.0f};
     
-//     FLCSet pPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
-//     FLCSet pNegSet(std::make_shared<LinearCenterNMF>(), m_pData);
+    FLCSet pPosSet(std::make_shared<LinearCenterPMF>(), m_pData);
+    FLCSet pNegSet(std::make_shared<LinearCenterNMF>(), m_pData);
     
-//     FLCSet dPosSet(std::make_shared<LinearCenterPMF>(), m_dData);
-//     FLCSet dNegSet(std::make_shared<LinearCenterNMF>(), m_dData);
+    FLCSet dPosSet(std::make_shared<LinearCenterPMF>(), m_dData);
+    FLCSet dNegSet(std::make_shared<LinearCenterNMF>(), m_dData);
 
-//     FLCSet iPosSet(std::make_shared<LinearCenterPMF>(), m_iData);
-//     FLCSet iNegSet(std::make_shared<LinearCenterNMF>(), m_iData);
+    FLCSet iPosSet(std::make_shared<LinearCenterPMF>(), m_iData);
+    FLCSet iNegSet(std::make_shared<LinearCenterNMF>(), m_iData);
 
-//     FLCSet pGausSet(std::make_shared<GaussianMF>(), m_iData);
+    FLCSet pGausSet(std::make_shared<GaussianMF>(), m_iData);
 
-//     auto fuzzyRules = {
-//         // P+ and P- rules
-//         FLCRule(pPosSet, dPosSet, FLCRule::PROD, FLCRule::POS, weight[0]), // P+
-//         FLCRule(pNegSet, dNegSet, FLCRule::PROD, FLCRule::NEG, weight[0]), // P-
-//         // D+ and D- rules
-//         FLCRule(dPosSet, pNegSet, FLCRule::PROD, FLCRule::POS, weight[1]), // D+
-//         FLCRule(dNegSet, pPosSet, FLCRule::PROD, FLCRule::NEG, weight[1]), // D-
-//         // I+ and I- rules
-//         FLCRule(pPosSet, iPosSet, FLCRule::PROD, FLCRule::POS, weight[2]), // I+
-//         FLCRule(pNegSet, iNegSet, FLCRule::PROD, FLCRule::NEG, weight[2]), // I-
-//         // Gaussian rule for reducing overshoot
-//         FLCRule(dPosSet, pGausSet, FLCRule::SUM, FLCRule::POS, weight[3]), // G+
-//         FLCRule(dNegSet, pGausSet, FLCRule::SUM, FLCRule::NEG, weight[3])  // G-
-//     };
-//     m_controller->setRules(fuzzyRules);
+    auto fuzzyRules = {
+        // P+ and P- rules
+        FLCRule(pPosSet, dPosSet, FLCRule::PROD, FLCRule::POS, weight[0]), // P+
+        FLCRule(pNegSet, dNegSet, FLCRule::PROD, FLCRule::NEG, weight[0]), // P-
+        // D+ and D- rules
+        FLCRule(dPosSet, pNegSet, FLCRule::PROD, FLCRule::POS, weight[1]), // D+
+        FLCRule(dNegSet, pPosSet, FLCRule::PROD, FLCRule::NEG, weight[1]), // D-
+        // I+ and I- rules
+        FLCRule(pPosSet, iPosSet, FLCRule::PROD, FLCRule::POS, weight[2]), // I+
+        FLCRule(pNegSet, iNegSet, FLCRule::PROD, FLCRule::NEG, weight[2]), // I-
+        // Gaussian rule for reducing overshoot
+        FLCRule(dPosSet, pGausSet, FLCRule::SUM, FLCRule::POS, weight[3]), // G+
+        FLCRule(dNegSet, pGausSet, FLCRule::SUM, FLCRule::NEG, weight[3])  // G-
+    };
+    m_controller->setRules(fuzzyRules);
 
-//     float result = 0.0f;
-
-//     std::array<TestDataPID, 2> tData = {
-//         TestDataPID(0.1f, 0.0f, 0.0f, 10.0f),
-//         TestDataPID(0.2f, 0.0f, 0.0f, 10.0f)
-//     };
+    std::array<TestData, 11> testInput = {
+        TestData(100.0f,  18.894609f),
+        TestData(90.0f,   13.012421f),
+        TestData(80.0f,   11.12964f),
+        TestData(70.0f,   9.2464838f),
+        TestData(60.0f,   7.3627725f),
+        TestData(50.0f,   5.4783454f),
+        TestData(40.0f,   3.5930924f),
+        TestData(30.0f,   1.7069294f),
+        TestData(20.0f,   -0.1802146f),
+        TestData(10.0f,   -2.0683622f),
+        TestData(0.0f,    -3.9575171f),
+    };
     
-//     for (const auto& data : tData) {
-//         m_pData->setData(data.p);
-//         m_iData->setData(data.i);
-//         m_dData->setData(data.d);
-//         result = m_controller->evaluate();
-//         EXPECT_FLOAT_EQ(result, data.expected);
-//     }
-// }
+    float delta = 100.0f;
+    float i, d; 
+    float dt = 0.001f;
+    for (const auto& data : testInput) {
+
+        i += data.input * dt;
+        d = data.input - delta;
+        delta = data.input;
+
+        m_pData->setData(normaliseVal(data.input, -100.0f, 100.0f));
+        m_iData->setData(normaliseVal(i, -100.0f, 100.0f));
+        m_dData->setData(normaliseVal(d, -100.0f, 100.0f));
+        float result = m_controller->evaluate();
+        EXPECT_FLOAT_EQ(result * 100.0f, data.expected);
+    }
+}
