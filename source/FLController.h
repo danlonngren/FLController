@@ -33,11 +33,10 @@ inline float clamp(float val, float minVal, float maxVal) {
 
 inline float normaliseVal(float x, float x_min, float x_max) {
     float b;
-    float a = (x - x_min) / (x_max - x_min); // normalize to [0, 1]
-    log("x: " + STR(x) + ", a: " +  STR(a) + 
-        ", x_min: " + STR(x_min) + ", x_max: " + STR(x_max) );
-
+    float a = (x - x_min) / (x_max - x_min); // normalize to [0, 1]    
     b = a * 2.0f - 1.0f;                // scale to [-1, 1]
+    log("x: " + STR(x) + ", b: " +  STR(b) + 
+        ", x_min: " + STR(x_min) + ", x_max: " + STR(x_max) );
     return clamp(b, -1.0f, 1.0f);  // no clamp needed unless you want to guard against overshoot
 }
 
@@ -224,8 +223,7 @@ public:
         else if (m_type == FLCType::ZERO)
             output *= 0.0f;
 
-        log("mf1: "+ STR(mf1) + ", mf2: "+ STR(mf2) + 
-            ", membership: "+ STR(membership) + ", output: "+ STR(output));
+        // log("mf1: "+ STR(mf1) + ", mf2: "+ STR(mf2) +", membership: "+ STR(membership) + ", output: "+ STR(output));
 
 		return std::make_pair(output, membership);
 	}
@@ -265,8 +263,8 @@ private:
             numerator += n;
             denominator += d;
         }
-        log("numerator: " + STR(numerator) + ", denominator: " + STR(denominator));
         float output = (denominator != 0.0f) ? numerator / denominator : 0.0f;
+        log("numerator: " + STR(numerator) + ", denominator: " + STR(denominator) + ", output: " + STR(output));
         return output;
     }
 }; // End FLController
