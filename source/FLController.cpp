@@ -1,18 +1,65 @@
 #include "FLController.h"
 
-#include <math.h>
 #include <memory>
 #include <array>
 #include <algorithm>
 #include <utility>
+
+// --- Membership functions ---
+float MF::GaussianMF(float x) {
+    float mean = 0.0f;
+    float sigma = 0.3f;
+    float diff = x - mean;
+    return std::exp(-(diff * diff) / (2.0f * sigma * sigma));
+}
+
+float MF::LinearCenterPMF(float x) {
+    return (x + 1.0f) / 2.0f;  // x=-1 → 0, x=0 → 0.5, x=1 → 1
+}
+
+float MF::LinearCenterNMF(float x) {
+    return (1.0f - x) / 2.0f;  // x=-1 → 1, x=0 → 0.5, x=1 → 0
+}
+
+float MF::LinearPMF(float x) {
+    float start = 0.0f;
+    float end = 1.0f;
+    if (x <= start) return 0.0f;
+    else if (x >= end) return 1.0f;
+    else return (x - start) / (end - start);  // linear ramp from 0 to 1
+}
+
+float MF::LinearNMF(float x) {
+    float start = -1.0f;
+    float end = 0.0f;
+    if (x <= start) return 1.0f;
+    else if (x >= end) return 0.0f;
+    else return (end - x) / (end - start);
+}
+
+float MF::NonLinearPMF(float x) {
+    return (((-x * x * x - x) / 2020.0f) + 0.5f);
+}
+
+float MF::NonLinearNMF(float x) {
+    return ((((x * x * x) + x) / 2020.0f) + 0.5f);
+}
+
+float MF::outputPos(float x) {
+    return x; // Do nothing
+}
+
+float MF::outputNeg(float x) {
+    return x * -1.0f;
+} 
 
 
 // --- FLController implementation ---
 FLController::FLController( float normalizationMin, float normalizationMax) :
         m_normMin(normalizationMin),
         m_normMax(normalizationMax),
-        m_fuzzyOutput(0.0f), 
-        m_FLCRules() {
+        m_FLCRules(),
+        m_fuzzyOutput(0.0f) {
     std::cout << std::fixed << std::setprecision(3);
 }
 
@@ -24,54 +71,46 @@ float FLController::evaluate() {
 }
 
 float FLController::defuzzifyWeightedAvg(std::vector<FLCRule>& rules) {
-    float numerator   = 0.0f;
-    float denominator = 0.0f;
+    float weightedSum = 0.0f;
+    float totalWeight = 0.0f;
+
     for (const auto& rule : m_FLCRules) {
-        auto [n, d] = rule.evaluate(); // Evaluate the rules
-        numerator += n;
-        denominator += d;
+        auto [output, weight] = rule.evaluate(); // Evaluate the rules
+        weightedSum += output;
+        totalWeight += weight;
     }
-    float output = (denominator != 0.0f) ? numerator / denominator : 0.0f;
+    float output = (totalWeight != 0.0f) ? weightedSum / totalWeight : 0.0f;
     if constexpr (ENABLE_LOGGING)
-        log("numerator: " + STR(numerator) + ", denominator: " + STR(denominator) + ", output: " + STR(output));
+        log("weightedSum: " + toStr(weightedSum) + ", totalWeight: " + toStr(totalWeight) + ", output: " + toStr(output));
     return output;
 }
 
-void FLController::setRules(const std::vector<FLCRule>& rules) {
-    m_FLCRules = rules;
+void FLController::setRules(std::vector<FLCRule> rules) {
+    m_FLCRules = std::move(rules);
 } 
 
 void FLController::reset() {
 	m_fuzzyOutput = 0.0f;
+    m_FLCRules.clear();
 }
 
 
 // --- FLCRule Implementation ---
 std::pair<float, float> FLCRule::evaluate() const {
-    float mf1 = m_conditions[0].evaluate();
-    float mf2 = m_conditions[1].evaluate();
-    float membership = flcOperator(mf1, mf2, m_operator);
+    float a = cond1.evaluate();
+    float b = cond2.evaluate();
+    const float membership = m_operator ? m_operator(a, b) : 0.0f;
+
     float output = membership * m_weight;
-
     // Evaluate output. This should be a membership function
-    if (m_type == FLCType::NEG)
-        output *= -1.0f;
-    else if (m_type == FLCType::ZERO)
-        output *= 0.0f;
-    if constexpr (ENABLE_LOGGING)
-        log("mf1: "+ STR(mf1) + ", mf2: "+ STR(mf2) +", membership: "+ STR(membership) + ", output: "+ STR(output));
-
-    return std::make_pair(output, membership);
-}
-
-float FLCRule::flcOperator(float a, float b, FLCOperatorsType type) const {
-    switch (type) {
-        case FLCOperatorsType::PROD:        return a * b;
-        case FLCOperatorsType::AND:         return std::min(a, b);
-        case FLCOperatorsType::OR:          return std::max(a, b);
-        case FLCOperatorsType::SUM:         return a + b;
-        case FLCOperatorsType::BOUNDEDSUM:  return std::min(1.0f, a + b);
-        case FLCOperatorsType::BOUNDEDDIFF: return std::max(0.0f, a + b - 1.0f);
-        default:    return 0.0f;
+    switch (m_type) {
+        case FLCType::Positive: break;
+        case FLCType::Negative: output *= -1.0; break;
+        case FLCType::Zero:     output = 0.0f; break;
     }
+
+    if constexpr (ENABLE_LOGGING)
+        log("membership: "+ toStr(membership) + ", output: "+ toStr(output));
+
+    return {output, membership};
 }
