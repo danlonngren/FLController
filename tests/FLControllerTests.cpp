@@ -65,32 +65,32 @@ protected:
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerLinearNMFPosTest) {
     TestData tData(0.5f, 0.0f);
-    EXPECT_FLOAT_EQ(MF::LinearNMF(tData.input), tData.expected);
+    EXPECT_FLOAT_EQ(FuzzyMF::LinearNMF(tData.input), tData.expected);
 }
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerLinearNMFNegTest) {
     TestData tData(-0.5f, 0.5f);
-    EXPECT_FLOAT_EQ(MF::LinearNMF(tData.input), tData.expected);
+    EXPECT_FLOAT_EQ(FuzzyMF::LinearNMF(tData.input), tData.expected);
 }
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerLinearPMFPosTest) {
     TestData tData(0.5f, 0.5f);
-    EXPECT_FLOAT_EQ(MF::LinearPMF(tData.input), tData.expected);
+    EXPECT_FLOAT_EQ(FuzzyMF::LinearPMF(tData.input), tData.expected);
 }
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerLinearPMFNegTest) {
     TestData tData(-0.5f, 0.0f);
-    EXPECT_FLOAT_EQ(MF::LinearPMF(tData.input), tData.expected);
+    EXPECT_FLOAT_EQ(FuzzyMF::LinearPMF(tData.input), tData.expected);
 }
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerGaussianMFTest) {
     TestData tData(0.0f, 1.0f);
-    EXPECT_FLOAT_EQ(MF::GaussianMF(tData.input), tData.expected);
+    EXPECT_FLOAT_EQ(FuzzyMF::GaussianMF(tData.input), tData.expected);
 }
 
 TEST_F(FLCMembershipFunctionsTests, FLControllerGaussianMFZeroInputTest) {
     TestData tData(0.0f, 1.0f);
-    EXPECT_FLOAT_EQ(MF::GaussianMF(tData.input), tData.expected);
+    EXPECT_FLOAT_EQ(FuzzyMF::GaussianMF(tData.input), tData.expected);
 }
 
 // --- FLController Tests ---
@@ -118,31 +118,31 @@ protected:
 TEST_F(FLControllerTests, FLControllerEvaluateZeroTest) {
     float weight[4] {1.0f, 1.0f, 1.0f, 1.0f};
     
-    FLCBindingSet pPosSet(MF::LinearCenterPMF, m_pData);
-    FLCBindingSet pNegSet(MF::LinearCenterNMF, m_pData);
+    FuzzyCondition  pPosSet(FuzzyMF::LinearCenterPMF, m_pData);
+    FuzzyCondition  pNegSet(FuzzyMF::LinearCenterNMF, m_pData);
     
-    FLCBindingSet dPosSet(MF::LinearCenterPMF, m_dData);
-    FLCBindingSet dNegSet(MF::LinearCenterNMF, m_dData);
+    FuzzyCondition  dPosSet(FuzzyMF::LinearCenterPMF, m_dData);
+    FuzzyCondition  dNegSet(FuzzyMF::LinearCenterNMF, m_dData);
 
-    FLCBindingSet iPosSet(MF::LinearCenterPMF, m_pData);
-    FLCBindingSet iNegSet(MF::LinearCenterNMF, m_iData);
+    FuzzyCondition  iPosSet(FuzzyMF::LinearCenterPMF, m_pData);
+    FuzzyCondition  iNegSet(FuzzyMF::LinearCenterNMF, m_iData);
 
-    FLCBindingSet pGausSet(MF::GaussianMF, m_iData);
-    FLCBindingSet pGausNegSet(MF::GaussianMF, m_iData);
+    FuzzyCondition  pGausSet(FuzzyMF::GaussianMF, m_iData);
+    FuzzyCondition  pGausNegSet(FuzzyMF::GaussianMF, m_iData);
 
-    std::vector<FLCRule> fuzzyRules = {
+    std::vector<FuzzyRule> fuzzyRules = {
         // P+ and P- rules
-        FLCRule(pPosSet, dPosSet, FuzzyOps::Product, FLCRule::Positive, weight[0]), // P+
-        FLCRule(pNegSet, dNegSet, FuzzyOps::Product, FLCRule::Negative, weight[0]), // P-
+        FuzzyRule(pPosSet, dPosSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[0]), // P+
+        FuzzyRule(pNegSet, dNegSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[0]), // P-
         // D+ and D- rules
-        FLCRule(dPosSet, pNegSet, FuzzyOps::Product, FLCRule::Positive, weight[1]), // D+
-        FLCRule(dNegSet, pPosSet, FuzzyOps::Product, FLCRule::Negative, weight[1]), // D-
+        FuzzyRule(dPosSet, pNegSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[1]), // D+
+        FuzzyRule(dNegSet, pPosSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[1]), // D-
         // I+ and I- rules
-        FLCRule(pPosSet, iPosSet, FuzzyOps::Product, FLCRule::Positive, weight[2]), // I+
-        FLCRule(pNegSet, iNegSet, FuzzyOps::Product, FLCRule::Negative, weight[2]), // I-
+        FuzzyRule(pPosSet, iPosSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[2]), // I+
+        FuzzyRule(pNegSet, iNegSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[2]), // I-
         // Gaussian rule for reducing overshoot
-        FLCRule(dPosSet, pGausSet, FuzzyOps::Product, FLCRule::Positive, weight[3]), // G+
-        FLCRule(dNegSet, pGausSet, FuzzyOps::Product, FLCRule::Negative, weight[3])  // G-
+        FuzzyRule(dPosSet, pGausSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[3]), // G+
+        FuzzyRule(dNegSet, pGausSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[3])  // G-
     };
 
     m_controller->setRules(fuzzyRules);
@@ -153,16 +153,16 @@ TEST_F(FLControllerTests, FLControllerEvaluateZeroTest) {
 TEST_F(FLControllerTests, FLControllerEvaluatePTest) {
     float weight[4] {1.0f, 1.0f, 1.0f, 1.0f};
     
-    FLCBindingSet pPosSet(MF::LinearCenterPMF, m_pData);
-    FLCBindingSet pNegSet(MF::LinearCenterNMF, m_pData);
+    FuzzyCondition  pPosSet(FuzzyMF::LinearCenterPMF, m_pData);
+    FuzzyCondition  pNegSet(FuzzyMF::LinearCenterNMF, m_pData);
     
-    FLCBindingSet dPosSet(MF::LinearCenterPMF, m_dData);
-    FLCBindingSet dNegSet(MF::LinearCenterNMF, m_dData);
+    FuzzyCondition  dPosSet(FuzzyMF::LinearCenterPMF, m_dData);
+    FuzzyCondition  dNegSet(FuzzyMF::LinearCenterNMF, m_dData);
 
-    std::vector<FLCRule> fuzzyRules = {
+    std::vector<FuzzyRule> fuzzyRules = {
         // P+ and P- rules
-        FLCRule(pPosSet, dPosSet, FuzzyOps::Product, FLCRule::Positive, weight[0]), // P+
-        FLCRule(pNegSet, dNegSet, FuzzyOps::Product, FLCRule::Negative, weight[0]), // P-
+        FuzzyRule(pPosSet, dPosSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[0]), // P+
+        FuzzyRule(pNegSet, dNegSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[0]), // P-
     };
     m_controller->setRules(fuzzyRules);
 
@@ -185,16 +185,16 @@ TEST_F(FLControllerTests, FLControllerEvaluatePTest) {
 TEST_F(FLControllerTests, FLControllerEvaluateITest) {
     float weight[4] {1.0f, 1.0f, 1.0f, 1.0f};
     
-    FLCBindingSet pPosSet(MF::LinearCenterPMF, m_pData);
-    FLCBindingSet pNegSet(MF::LinearCenterNMF, m_pData);
+    FuzzyCondition  pPosSet(FuzzyMF::LinearCenterPMF, m_pData);
+    FuzzyCondition  pNegSet(FuzzyMF::LinearCenterNMF, m_pData);
 
-    FLCBindingSet iPosSet(MF::LinearCenterPMF, m_iData);
-    FLCBindingSet iNegSet(MF::LinearCenterNMF, m_iData);
+    FuzzyCondition  iPosSet(FuzzyMF::LinearCenterPMF, m_iData);
+    FuzzyCondition  iNegSet(FuzzyMF::LinearCenterNMF, m_iData);
 
-    std::vector<FLCRule> fuzzyRules = {
+    std::vector<FuzzyRule> fuzzyRules = {
         // // I+ and I- rules
-        FLCRule(pPosSet, iPosSet, FuzzyOps::Product, FLCRule::Positive, weight[2]), // I+
-        FLCRule(pNegSet, iNegSet, FuzzyOps::Product, FLCRule::Negative, weight[2]), // I-
+        FuzzyRule(pPosSet, iPosSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[2]), // I+
+        FuzzyRule(pNegSet, iNegSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[2]), // I-
     };
     m_controller->setRules(fuzzyRules);
 
@@ -218,17 +218,17 @@ TEST_F(FLControllerTests, FLControllerEvaluateITest) {
 TEST_F(FLControllerTests, FLControllerEvaluateDTest) {
     float weight[4] {1.0f, 1.0f, 1.0f, 1.0f};
     
-    FLCBindingSet pPosSet(MF::LinearCenterPMF, m_pData);
-    FLCBindingSet pNegSet(MF::LinearCenterNMF, m_pData);
+    FuzzyCondition  pPosSet(FuzzyMF::LinearCenterPMF, m_pData);
+    FuzzyCondition  pNegSet(FuzzyMF::LinearCenterNMF, m_pData);
     
-    FLCBindingSet dPosSet(MF::LinearCenterPMF, m_dData);
-    FLCBindingSet dNegSet(MF::LinearCenterNMF, m_dData);
+    FuzzyCondition  dPosSet(FuzzyMF::LinearCenterPMF, m_dData);
+    FuzzyCondition  dNegSet(FuzzyMF::LinearCenterNMF, m_dData);
 
 
-    std::vector<FLCRule> fuzzyRules = {
+    std::vector<FuzzyRule> fuzzyRules = {
         // P+ and P- rules
-        FLCRule(pPosSet, dPosSet, FuzzyOps::Product, FLCRule::Positive, weight[0]), // P+
-        FLCRule(pNegSet, dNegSet, FuzzyOps::Product, FLCRule::Negative, weight[0]), // P-
+        FuzzyRule(pPosSet, dPosSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[0]), // P+
+        FuzzyRule(pNegSet, dNegSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[0]), // P-
     };
     m_controller->setRules(fuzzyRules);
 
@@ -252,14 +252,14 @@ TEST_F(FLControllerTests, FLControllerEvaluateDTest) {
 
 TEST_F(FLControllerTests, FLControllerEvaluateGTest) {
  
-    FLCBindingSet dPosSet(MF::LinearCenterPMF, m_dData);
-    FLCBindingSet dNegSet(MF::LinearCenterNMF, m_dData);
-    FLCBindingSet pGausSet(MF::GaussianMF, m_pData);
+    FuzzyCondition  dPosSet(FuzzyMF::LinearCenterPMF, m_dData);
+    FuzzyCondition  dNegSet(FuzzyMF::LinearCenterNMF, m_dData);
+    FuzzyCondition  pGausSet(FuzzyMF::GaussianMF, m_pData);
 
-    std::vector<FLCRule> fuzzyRules = {
+    std::vector<FuzzyRule> fuzzyRules = {
         // Gaussian rule for reducing overshoot
-        FLCRule(dPosSet, pGausSet, FuzzyOps::Sum, FLCRule::Positive, 1.0f), // G+
-        FLCRule(dNegSet, pGausSet, FuzzyOps::Sum, FLCRule::Negative, 1.0f)  // G-
+        FuzzyRule(dPosSet, pGausSet, FuzzyOps::Sum, FuzzyMF::OutputPos, 1.0f), // G+
+        FuzzyRule(dNegSet, pGausSet, FuzzyOps::Sum, FuzzyMF::OutputNeg, 1.0f)  // G-
     };
     m_controller->setRules(fuzzyRules);
 
@@ -283,30 +283,30 @@ TEST_F(FLControllerTests, FLControllerEvaluateGTest) {
 TEST_F(FLControllerTests, FLControllerEvaluatePIDTest) {
     float weight[4] {1.3f, 0.3f, 0.7f, 1.0f};
     
-    FLCBindingSet pPosSet(MF::LinearCenterPMF, m_pData);
-    FLCBindingSet pNegSet(MF::LinearCenterNMF, m_pData);
+    FuzzyCondition  pPosSet(FuzzyMF::LinearCenterPMF, m_pData);
+    FuzzyCondition  pNegSet(FuzzyMF::LinearCenterNMF, m_pData);
     
-    FLCBindingSet dPosSet(MF::LinearCenterPMF, m_dData);
-    FLCBindingSet dNegSet(MF::LinearCenterNMF, m_dData);
+    FuzzyCondition  dPosSet(FuzzyMF::LinearCenterPMF, m_dData);
+    FuzzyCondition  dNegSet(FuzzyMF::LinearCenterNMF, m_dData);
 
-    FLCBindingSet iPosSet(MF::LinearCenterPMF, m_iData);
-    FLCBindingSet iNegSet(MF::LinearCenterNMF, m_iData);
+    FuzzyCondition  iPosSet(FuzzyMF::LinearCenterPMF, m_iData);
+    FuzzyCondition  iNegSet(FuzzyMF::LinearCenterNMF, m_iData);
 
-    FLCBindingSet pGausSet(MF::GaussianMF, m_iData);
+    FuzzyCondition  pGausSet(FuzzyMF::GaussianMF, m_iData);
 
-    std::vector<FLCRule> fuzzyRules = {
+    std::vector<FuzzyRule> fuzzyRules = {
         // P+ and P- rules
-        FLCRule(pPosSet, dPosSet, FuzzyOps::Product, FLCRule::Positive, weight[0]), // P+
-        FLCRule(pNegSet, dNegSet, FuzzyOps::Product, FLCRule::Negative, weight[0]), // P-
+        FuzzyRule(pPosSet, dPosSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[0]), // P+
+        FuzzyRule(pNegSet, dNegSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[0]), // P-
         // D+ and D- rules
-        FLCRule(dPosSet, pNegSet, FuzzyOps::Product, FLCRule::Positive, weight[1]), // D+
-        FLCRule(dNegSet, pPosSet, FuzzyOps::Product, FLCRule::Negative, weight[1]), // D-
+        FuzzyRule(dPosSet, pNegSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[1]), // D+
+        FuzzyRule(dNegSet, pPosSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[1]), // D-
         // I+ and I- rules
-        FLCRule(pPosSet, iPosSet, FuzzyOps::Product, FLCRule::Positive, weight[2]), // I+
-        FLCRule(pNegSet, iNegSet, FuzzyOps::Product, FLCRule::Negative, weight[2]), // I-
+        FuzzyRule(pPosSet, iPosSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[2]), // I+
+        FuzzyRule(pNegSet, iNegSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[2]), // I-
         // Gaussian rule for reducing overshoot
-        FLCRule(dPosSet, pGausSet, FuzzyOps::Sum, FLCRule::Positive, weight[3]), // G+
-        FLCRule(dNegSet, pGausSet, FuzzyOps::Sum, FLCRule::Negative, weight[3])  // G-
+        FuzzyRule(dPosSet, pGausSet, FuzzyOps::Sum, FuzzyMF::OutputPos, weight[3]), // G+
+        FuzzyRule(dNegSet, pGausSet, FuzzyOps::Sum, FuzzyMF::OutputNeg, weight[3])  // G-
     };
     m_controller->setRules(fuzzyRules);
 
