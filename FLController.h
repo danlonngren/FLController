@@ -1,7 +1,5 @@
 #pragma once
 
-#include "FLControllerInterface.h"
-
 #include <functional>
 #include <cmath>
 
@@ -154,9 +152,9 @@ private:
 	float m_weight;
 }; // End FuzzyRule
 
-
 // --- Fuzzy Logic Controller Set ---
-class FLController : public FLControllerInterface {
+class FLController {
+
 public:
 	FLController(float normalizationMin, float normalizationMax );
 	float evaluate();
