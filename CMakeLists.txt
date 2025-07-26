@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28.3)
-project(sPIDControllerLib LANGUAGES CXX) 
+project(FLControllerProject LANGUAGES CXX) 
 
-option(BUILD_TESTS "Build sPIDController tests" OFF)
+option(BUILD_TESTS "Build GoogleTests tests" OFF)
 
 add_library(FLController STATIC 
     FLController.cpp

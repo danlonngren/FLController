@@ -3,7 +3,6 @@
 #include <functional>
 #include <cmath>
 
-
 // --- Logging extraction ---
 #include <iostream>
 
@@ -76,8 +75,9 @@ namespace FuzzyMF {
     }
 
     // Sugeno-Style Output
-    inline float OutputPos(float x) { return x; }
-    inline float OutputNeg(float x) { return x * -1.0f; } 
+    inline float OutputPos(float x)  { return x; }
+    inline float OutputZero(float x) { return 0.0f; }
+    inline float OutputNeg(float x)  { return x * -1.0f; } 
 }; // End MF
 
 
@@ -154,7 +154,6 @@ private:
 
 // --- Fuzzy Logic Controller Set ---
 class FLController {
-
 public:
 	FLController(float normalizationMin, float normalizationMax );
 	float evaluate();
