@@ -130,7 +130,8 @@ TEST_F(FLControllerTests, FLControllerEvaluateZeroTest) {
 	FuzzyCondition  pGausSet(FuzzyMF::GaussianMF, m_iData);
 	FuzzyCondition  pGausNegSet(FuzzyMF::GaussianMF, m_iData);
 
-	std::vector<FuzzyRule> fuzzyRules = {
+	const uint32_t ruleSize = 8;
+	FuzzyRule fuzzyRules[ruleSize] = {
 		// P+ and P- rules
 		FuzzyRule(pPosSet, dPosSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[0]), // P+
 		FuzzyRule(pNegSet, dNegSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[0]), // P-
@@ -145,7 +146,7 @@ TEST_F(FLControllerTests, FLControllerEvaluateZeroTest) {
 		FuzzyRule(dNegSet, pGausSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[3])  // G-
 	};
 
-	m_controller->setRules(fuzzyRules);
+	m_controller->setRules(fuzzyRules, ruleSize);
 	auto result = m_controller->evaluate();
 	EXPECT_FLOAT_EQ(result, 0.0f); // Adjust expected value based on actual implementation
 }
@@ -159,12 +160,13 @@ TEST_F(FLControllerTests, FLControllerEvaluatePTest) {
 	FuzzyCondition  dPosSet(FuzzyMF::LinearCenterPMF, m_dData);
 	FuzzyCondition  dNegSet(FuzzyMF::LinearCenterNMF, m_dData);
 
-	std::vector<FuzzyRule> fuzzyRules = {
+	const uint32_t ruleSize = 2;
+	FuzzyRule fuzzyRules[ruleSize] = {
 		// P+ and P- rules
 		FuzzyRule(pPosSet, dPosSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[0]), // P+
 		FuzzyRule(pNegSet, dNegSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[0]), // P-
 	};
-	m_controller->setRules(fuzzyRules);
+	m_controller->setRules(fuzzyRules, ruleSize);
 
 	float result = 0.0f;
 
@@ -191,12 +193,13 @@ TEST_F(FLControllerTests, FLControllerEvaluateITest) {
 	FuzzyCondition  iPosSet(FuzzyMF::LinearCenterPMF, m_iData);
 	FuzzyCondition  iNegSet(FuzzyMF::LinearCenterNMF, m_iData);
 
-	std::vector<FuzzyRule> fuzzyRules = {
+	const uint32_t ruleSize = 2;
+	FuzzyRule fuzzyRules[ruleSize] = {
 		// // I+ and I- rules
 		FuzzyRule(pPosSet, iPosSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[2]), // I+
 		FuzzyRule(pNegSet, iNegSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[2]), // I-
 	};
-	m_controller->setRules(fuzzyRules);
+	m_controller->setRules(fuzzyRules, ruleSize);
 
 	float result = 0.0f;
 
@@ -224,13 +227,13 @@ TEST_F(FLControllerTests, FLControllerEvaluateDTest) {
 	FuzzyCondition  dPosSet(FuzzyMF::LinearCenterPMF, m_dData);
 	FuzzyCondition  dNegSet(FuzzyMF::LinearCenterNMF, m_dData);
 
-
-	std::vector<FuzzyRule> fuzzyRules = {
+	const uint32_t ruleSize = 2;
+	FuzzyRule fuzzyRules[ruleSize] = {
 		// P+ and P- rules
 		FuzzyRule(pPosSet, dPosSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[0]), // P+
 		FuzzyRule(pNegSet, dNegSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[0]), // P-
 	};
-	m_controller->setRules(fuzzyRules);
+	m_controller->setRules(fuzzyRules, ruleSize);
 
 	float result = 0.0f;
 
@@ -256,12 +259,13 @@ TEST_F(FLControllerTests, FLControllerEvaluateGTest) {
 	FuzzyCondition  dNegSet(FuzzyMF::LinearCenterNMF, m_dData);
 	FuzzyCondition  pGausSet(FuzzyMF::GaussianMF, m_pData);
 
-	std::vector<FuzzyRule> fuzzyRules = {
+	const uint32_t ruleSize = 2;
+	FuzzyRule fuzzyRules[ruleSize] = {
 		// Gaussian rule for reducing overshoot
 		FuzzyRule(dPosSet, pGausSet, FuzzyOps::Sum, FuzzyMF::OutputPos, 1.0f), // G+
 		FuzzyRule(dNegSet, pGausSet, FuzzyOps::Sum, FuzzyMF::OutputNeg, 1.0f)  // G-
 	};
-	m_controller->setRules(fuzzyRules);
+	m_controller->setRules(fuzzyRules, ruleSize);
 
 	std::array<TestData, 4> testInput = {
 		TestData(0.1f,  0.17289558f),
@@ -294,7 +298,8 @@ TEST_F(FLControllerTests, FLControllerEvaluatePIDTest) {
 
 	FuzzyCondition  pGausSet(FuzzyMF::GaussianMF, m_iData);
 
-	std::vector<FuzzyRule> fuzzyRules = {
+	const uint32_t ruleSize = 8;
+	FuzzyRule fuzzyRules[ruleSize] = {
 		// P+ and P- rules
 		FuzzyRule(pPosSet, dPosSet, FuzzyOps::Product, FuzzyMF::OutputPos, weight[0]), // P+
 		FuzzyRule(pNegSet, dNegSet, FuzzyOps::Product, FuzzyMF::OutputNeg, weight[0]), // P-
@@ -308,7 +313,7 @@ TEST_F(FLControllerTests, FLControllerEvaluatePIDTest) {
 		FuzzyRule(dPosSet, pGausSet, FuzzyOps::Sum, FuzzyMF::OutputPos, weight[3]), // G+
 		FuzzyRule(dNegSet, pGausSet, FuzzyOps::Sum, FuzzyMF::OutputNeg, weight[3])  // G-
 	};
-	m_controller->setRules(fuzzyRules);
+	m_controller->setRules(fuzzyRules, ruleSize);
 
 	std::array<TestData, 11> testInput = {
 		TestData(100.0f,  18.894609f),

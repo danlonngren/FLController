@@ -6,6 +6,7 @@
 // Include math for Membership functions 
 #include <cmath>
 #include <vector>
+#include "stdint.h"
 
 // --- Utility ---
 inline float clamp(float val, float minVal, float maxVal) {
@@ -140,11 +141,12 @@ class FLController {
 public:
 	FLController(float normalizationMin, float normalizationMax );
 	float evaluate();
-	void setRules(std::vector<FuzzyRule> rules);
+	void setRules(FuzzyRule* rules, uint32_t rulesCount);
 	void reset();
 private:
-	float defuzzifyWeightedAvg(std::vector<FuzzyRule>& rules);
+	float defuzzifyWeightedAvg(const FuzzyRule* rules, uint32_t rulesCount);
 
-	std::vector<FuzzyRule> m_FLCRules;
+	FuzzyRule* m_FLCRules;
+	uint32_t m_rulesCount;
 	float m_fuzzyOutput;
 }; // End FLController

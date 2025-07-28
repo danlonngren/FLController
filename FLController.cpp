@@ -2,23 +2,30 @@
 
 // --- FLController implementation ---
 FLController::FLController( float normalizationMin, float normalizationMax) :
-		m_FLCRules(),
+		m_FLCRules(nullptr),
+		m_rulesCount(0),
 		m_fuzzyOutput(0.0f) {
 }
 
 float FLController::evaluate() { 
 	// Defuzzification using CoG method
-	m_fuzzyOutput = defuzzifyWeightedAvg(m_FLCRules);
+	if (!m_FLCRules)
+		return 0;
+
+	m_fuzzyOutput = defuzzifyWeightedAvg(m_FLCRules, m_rulesCount);
 
 	return m_fuzzyOutput;
 }
 
-float FLController::defuzzifyWeightedAvg(std::vector<FuzzyRule>& rules) {
+float FLController::defuzzifyWeightedAvg(const FuzzyRule* rules, uint32_t rulesCount) {
 	float weightedSum = 0.0f;
 	float totalWeight = 0.0f;
 
-	for (const auto& rule : rules) {
-		auto [output, weight] = rule.evaluate(); // Evaluate the rules
+	if (!rules)
+		return 0;
+
+	for (uint32_t i = 0; i < rulesCount; i++) {
+		auto [output, weight] = rules[i].evaluate(); // Evaluate the rules
 		weightedSum += output;
 		totalWeight += weight;
 	}
@@ -27,13 +34,17 @@ float FLController::defuzzifyWeightedAvg(std::vector<FuzzyRule>& rules) {
 	return output;
 }
 
-void FLController::setRules(std::vector<FuzzyRule> rules) {
-	m_FLCRules = std::move(rules);
+void FLController::setRules(FuzzyRule* rules, uint32_t rulesCount) {
+	if (!rules)
+		return;
+
+	m_FLCRules = rules;
+	m_rulesCount = rulesCount;
 } 
 
 void FLController::reset() {
 	m_fuzzyOutput = 0.0f;
-	m_FLCRules.clear();
+	m_FLCRules = nullptr;
 }
 
 // --- FLCRule Implementation ---
